@@ -1,0 +1,49 @@
+FROM registry.angstrom.co.th:8443/centos7_nodejs:6.10.2
+MAINTAINER Wattana Inthaphong <wattana@angstromsolutions.net>
+ 
+RUN yum clean all \ 
+  && yum install -y epel-release \
+  && yum update -y \
+  && yum install -y make gcc gcc-c++ wget vim mlocate which tar bzip2 zip unzip net-tools rsync python-setuptools glibc-static \
+  && yum clean all
+
+ENV PG_SERIES 96
+ENV PG_VERSION 9.6
+
+RUN yum update -y \ 
+&& rpm -iUvh http://yum.postgresql.org/$PG_VERSION/redhat/rhel-7-x86_64/pgdg-centos$PG_SERIES-$PG_VERSION-3.noarch.rpm \
+&& yum install -y\
+  postgresql$PG_SERIES-$PG_VERSION*\
+  postgresql$PG_SERIES-devel-$PG_VERSION*\
+  postgresql$PG_SERIES-libs-$PG_VERSION* \
+  postgresql$PG_SERIES-plpython-$PG_VERSION*\
+  postgresql$PG_SERIES-python\
+  postgresql$PG_SERIES-python-debuginfo\
+  postgresql$PG_SERIES-contrib-$PG_VERSION*\
+  postgresql$PG_SERIES-server-$PG_VERSION* \
+|| yum clean all
+
+ENV PATH $PATH:/usr/pgsql-$PG_VERSION/bin
+
+### RUBY #####################################################################
+
+RUN yum install -y git bison libtool automake patch\
+ zlib-devel libxml2-devel openssl-devel libyaml-devel libffi-devel readline-devel gdbm-devel ncurses-devel libcurl-devel pcre-devel\
+ sqlite-devel libxslt libxslt-devel \
+&& yum clean all
+
+ENV RUBY_SERIES=2.4
+ENV RUBY_VERSION=2.4.1
+RUN wget https://cache.ruby-lang.org/pub/ruby/$RUBY_SERIES/ruby-$RUBY_VERSION.tar.gz &&\
+  tar -xf ruby-$RUBY_VERSION.tar.gz &&\
+  cd ruby-$RUBY_VERSION &&\
+  ./configure --disable-install-doc --disable-install-rdoc --enable-shared &&\
+  make && make install &&\
+  cd / &&\
+  rm -rf ruby-$RUBY_VERSION.tar.gz &&\
+  rm -rf ruby-$RUBY_VERSION &&\
+  gem install bundler --version '1.15.1' --no-ri --no-rdoc 
+COPY ./demo/Gemfile /Gemfile
+COPY ./demo/Gemfile.lock /Gemfile.lock
+
+RUN bundle install
